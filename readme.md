@@ -1,6 +1,6 @@
 # DineLytics — Advanced Analytics Chatbot
 
-DineLytics is a production-grade AI analytics assistant designed to democratize access to business data. It allows users to ask complex questions about restaurant operations, sales, and inventory in plain English and receive precise, tabular insights—bypassing the need for database knowledge or complex BI tools.
+DineLytics is a production-grade AI analytics assistant designed to democratize access to business data. It allows users to ask complex questions about restaurant operations, sales, and inventory in plain English and receive precise, tabular insights, bypassing the need for database knowledge or complex BI tools.
 
 🔗 **[Live Demo](http://dinelytics-194643721.us-east-2.elb.amazonaws.com/)**
 

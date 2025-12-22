@@ -1,6 +1,6 @@
 # DineLytics — DineLytics Analytics Chatbot (Prototype)
 
-![DineLytics Social Preview](dashboard/src/dashboard/images/social-preview.jpg)
+![DineLytics Social Preview]()
 
 An AI-powered analytics assistant that lets business users ask questions about DineLytics’s MongoDB data in plain English and get precise, tabular insights — no SQL or BI tool required.
 

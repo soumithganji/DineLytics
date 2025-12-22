@@ -4,7 +4,9 @@ DineLytics is a production-grade AI analytics assistant designed to democratize 
 
 🔗 **[Live Demo](http://dinelytics-194643721.us-east-2.elb.amazonaws.com/)**
 
-## 🚀 Key Features
+![DineLytics Preview](src/dashboard/assets/dinelytics_preview.png)
+
+##  Key Features
 
 *   **Multi-Agent Orchestration**: Powered by **CrewAI**, a team of specialized agents co-operate to handle queries:
     *   **Schema Analyzer**: Intelligently maps user questions to relevant MongoDB collections and fields, handling schema variations.
@@ -15,7 +17,7 @@ DineLytics is a production-grade AI analytics assistant designed to democratize 
 *   **Conversational Memory**: Maintains context across the session to support follow-up questions.
 *   **Schema-Aware**: Dynamically adapts to your specific MongoDB schema structure.
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 *   **Language**: Python 3.12+
 *   **Frameworks & Libraries**:
@@ -32,7 +34,7 @@ DineLytics is a production-grade AI analytics assistant designed to democratize 
     *   **Docker & Docker Compose**: Containerization and orchestration.
     *   **ZenML**: MLOps pipelines for embedding generation.
 
-## 📂 Project Structure
+##  Project Structure
 
 ```text
 src/dashboard/
@@ -48,7 +50,7 @@ src/dashboard/
 └── conversational_chatbot.py  # Main entry point and CrewAI logic
 ```
 
-## ⚡ Getting Started
+##  Getting Started
 
 ### Prerequisites
 

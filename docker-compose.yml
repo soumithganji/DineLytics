@@ -12,8 +12,8 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - ./config:/app/config
-      - ./schemas:/app/schemas
-      - ./images:/app/images
-      - ./db:/app/db
+      - ./src/dashboard/config:/app/src/dashboard/config
+      - ./src/dashboard/schemas:/app/src/dashboard/schemas
+      - ./src/dashboard/assets:/app/src/dashboard/assets
+      - ./src/dashboard/db:/app/src/dashboard/db
     restart: unless-stopped

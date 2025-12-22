@@ -70,13 +70,13 @@ Create a `.env` file at repo root or export via your shell. Minimum required:
 - App: open `http://localhost:8501`
 
 Notes:
-- The container runs Streamlit from `dashboard/src/dashboard/conversational_chatbot.py`.
+- The container runs Streamlit from `src/dashboard/conversational_chatbot.py`.
 - The code also contains an alternate agent setup in `chatbot.py`; the Flow‑based version is default.
 
 ### Run locally (without Docker)
 
 - Install deps: `pip install -r requirements.txt && pip install crewai~=0.76.9 crewai-tools~=0.13.4`
-- Start UI: `cd dashboard/src/dashboard && streamlit run conversational_chatbot.py`
+- Start UI: `cd src/dashboard && streamlit run conversational_chatbot.py`
 
 ## Usage Examples
 
@@ -87,9 +87,9 @@ Notes:
 
 ## Configuration
 
-- Agents/tasks: `dashboard/src/dashboard/config/agents.yaml`, `dashboard/src/dashboard/config/tasks.yaml`
-- Schemas mapping: `dashboard/src/dashboard/config/schema.yaml`
-- Local schema JSONs: `dashboard/src/dashboard/schemas/*.json`
+- Agents/tasks: `src/dashboard/config/agents.yaml`, `src/dashboard/config/tasks.yaml`
+- Schemas mapping: `src/dashboard/config/schema.yaml`
+- Local schema JSONs: `src/dashboard/schemas/*.json`
 
 You can tailor agent goals/instructions for your data domain and tighten/relax the Data Analyst’s behavior to be “table‑only, no commentary”.
 
@@ -99,26 +99,25 @@ You can tailor agent goals/instructions for your data domain and tighten/relax t
 - ZenML pipelines:
   - `product_data_pipeline`: fetch → clean/standardize products from MongoDB.
   - `product_embedding_pipeline`: generate OpenAI embeddings → upsert into Pinecone.
-- Steps live in `dashboard/src/dashboard/steps/*` and `dashboard/src/dashboard/pipelines/*`.
+- Steps live in `src/dashboard/steps/*` and `src/dashboard/pipelines/*`.
 
 Run the embedding pipeline after setting env vars to populate the Pinecone index used by the chatbot’s item‑matching tool.
 
 ## Project Structure
 
 ```
-dashboard/
-  src/dashboard/
-    callbacks/           # Agent/Task progress to UI
-    config/              # Agents, tasks, schema configs
-    memory/              # ConversationBufferWindow
-    pipelines/           # ZenML pipelines
-    schemas/             # Local schema JSONs
-    steps/               # ZenML steps (Mongo, embeddings, Pinecone)
-    tools/               # Mongo analyzer, item finder, Python executor
-    ui/                  # Streamlit chat + sidebar + CSS
-    utils/               # Crew assembly, summarizers, chat state helpers
-    chatbot.py           # Alt crew setup (legacy)
-    conversational_chatbot.py  # Flow + router entrypoint
+src/dashboard/
+  callbacks/           # Agent/Task progress to UI
+  config/              # Agents, tasks, schema configs
+  memory/              # ConversationBufferWindow
+  pipelines/           # ZenML pipelines
+  schemas/             # Local schema JSONs
+  steps/               # ZenML steps (Mongo, embeddings, Pinecone)
+  tools/               # Mongo analyzer, item finder, Python executor
+  ui/                  # Streamlit chat + sidebar + CSS
+  utils/               # Crew assembly, summarizers, chat state helpers
+  chatbot.py           # Alt crew setup (legacy)
+  conversational_chatbot.py  # Flow + router entrypoint
 ```
 
 

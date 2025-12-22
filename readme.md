@@ -1,140 +1,109 @@
-# DineLytics — DineLytics Analytics Chatbot (Prototype)
+# DineLytics — Advanced Analytics Chatbot
 
-![DineLytics Social Preview]()
+DineLytics is a production-grade AI analytics assistant designed to democratize access to business data. It allows users to ask complex questions about restaurant operations, sales, and inventory in plain English and receive precise, tabular insights—bypassing the need for database knowledge or complex BI tools.
 
-An AI-powered analytics assistant that lets business users ask questions about DineLytics’s MongoDB data in plain English and get precise, tabular insights — no SQL or BI tool required.
+🔗 **[Live Demo](http://dinelytics-194643721.us-east-2.elb.amazonaws.com/)**
 
-This prototype evolved into a production-grade solution. It demonstrates end‑to‑end problem solving: multi‑agent orchestration, schema understanding, query generation, execution, and presentation in a clean Streamlit UX.
+## 🚀 Key Features
 
-## What It Does
+*   **Multi-Agent Orchestration**: Powered by **CrewAI**, a team of specialized agents co-operate to handle queries:
+    *   **Schema Analyzer**: Intelligently maps user questions to relevant MongoDB collections and fields, handling schema variations.
+    *   **Query Builder**: Constructs optimized, aggregation-ready MongoDB queries.
+    *   **Data Analyst**: Executes queries, validates results, and formats them into clean, human-readable tables.
+*   **Semantic Understanding**: Uses **NVIDIA Embeddings** and **Pinecone** to resolve naming inconsistencies (e.g., matching "Mac n Cheese" to "Mac & Cheese") via semantic search.
+*   **Production-Ready Architecture**: Built with **Streamlit** for a responsive UI, containerized with **Docker**, and utilizing **ZenML** for data pipelines.
+*   **Conversational Memory**: Maintains context across the session to support follow-up questions.
+*   **Schema-Aware**: Dynamically adapts to your specific MongoDB schema structure.
 
-- Conversationally answers questions about sales, products, and restaurants using MongoDB data.
-- Classifies intent and routes between general chat and task‑specific data analysis.
-- Analyzes schemas, resolves naming inconsistencies (e.g., “Mac n Cheese” vs “Mac & Cheese”), and builds optimized MongoDB pipelines.
-- Executes queries safely, then formats results into readable, granular tables.
-- Persists conversation context with short‑term memory for better follow‑ups.
+## 🛠️ Tech Stack
 
-## Why It Stands Out
+*   **Language**: Python 3.12+
+*   **Frameworks & Libraries**:
+    *   **CrewAI**: Multi-agent orchestration.
+    *   **LangChain**: Tooling and LLM abstraction.
+    *   **Streamlit**: Interactive web interface.
+    *   **Pydantic**: Data validation and detailed schema definitions.
+    *   **PyMongo**: Direct database interaction.
+*   **AI & Data**:
+    *   **LLMs**: NVIDIA NIM (Llama 3.3).
+    *   **Vector DB**: Pinecone (for semantic item lookup).
+    *   **Database**: MongoDB.
+*   **Infrastructure**:
+    *   **Docker & Docker Compose**: Containerization and orchestration.
+    *   **ZenML**: MLOps pipelines for embedding generation.
 
-- Product thinking: focuses on business KPIs/end‑users, not just LLM demos.
-- Solid architecture: CrewAI multi‑agent system + LangChain tools + Streamlit UX.
-- Practical retrieval: OpenAI embeddings + Pinecone index for item name normalization.
-- Data rigor: schema‑aware analysis, query optimization, JSON‑first outputs.
-- Shipping mindset: Dockerized, .env‑driven config, clean modular code, clear roadmap.
+## 📂 Project Structure
 
-## Core Features
-
-- Natural‑language analytics on MongoDB collections
-- Multi‑agent CrewAI pipeline (Schema Analyzer, Query Builder, Data Analyst)
-- Local schema loading for low‑latency analysis and consistency
-- Item name normalization via embeddings + Pinecone lookup
-- Streamlit chat UI with conversation threads and lightweight memory
-
-## Tech Stack
-
-- Backend: Python 3.12, CrewAI, LangChain, Pydantic
-- LLMs/Embeddings: OpenAI (Chat + Embeddings)
-- Vector DB: Pinecone
-- Data: MongoDB (via PyMongo), ZenML pipelines
-- UI: Streamlit
-- Containerization: Docker, docker‑compose
-
-## Architecture
-
-- Conversational router: classifies queries as General vs Task‑Specific.
-- CrewAI agents:
-  - Schema Analyzer: loads schemas, identifies collections/fields, handles naming variance.
-  - Query Builder: generates optimized aggregation pipelines and Python code to execute.
-  - Data Analyst: validates/executes code, returns structured tables only.
-- Tools: MongoDB schema analyzer, local schema reader, Python REPL executor, Pinecone‑backed item matcher.
-- Memory: sliding window buffer for concise, useful context carry‑over.
-
-## Getting Started
-
-- Clone: ``
-- Python: 3.12 recommended (Docker path below is easiest)
-
-### Environment Variables
-
-Create a `.env` file at repo root or export via your shell. Minimum required:
-
-- `OPENAI_API_KEY`: OpenAI API key
-- `PINECONE_API_KEY`: Pinecone API key (for item equivalence)
-- `mongodb_uri`: MongoDB URI
-- `database_name`: Target database name
-- Optional LangSmith/telemetry: `LANGCHAIN_API_KEY`, `LANGCHAIN_PROJECT`, `LANGCHAIN_ENDPOINT`
-
-### Run with Docker (recommended)
-
-- Build + start: `docker compose up --build`
-- App: open `http://localhost:8501`
-
-Notes:
-- The container runs Streamlit from `src/dashboard/conversational_chatbot.py`.
-- The code also contains an alternate agent setup in `chatbot.py`; the Flow‑based version is default.
-
-### Run locally (without Docker)
-
-- Install deps: `pip install -r requirements.txt && pip install crewai~=0.76.9 crewai-tools~=0.13.4`
-- Start UI: `cd src/dashboard && streamlit run conversational_chatbot.py`
-
-## Usage Examples
-
-- “What are the sales of pizza till now?”
-- “Show me daily revenue trend for November 2025”
-- “What are the top 10 best-selling products?”
-- “What percentage of orders were cancelled?”
-
-## Configuration
-
-- Agents/tasks: `src/dashboard/config/agents.yaml`, `src/dashboard/config/tasks.yaml`
-- Schemas mapping: `src/dashboard/config/schema.yaml`
-- Local schema JSONs: `src/dashboard/schemas/*.json`
-
-You can tailor agent goals/instructions for your data domain and tighten/relax the Data Analyst’s behavior to be “table‑only, no commentary”.
-
-## Pipelines (Embeddings + Pinecone)
-
-- Product normalization uses embeddings to find semantically similar item names.
-- ZenML pipelines:
-  - `product_data_pipeline`: fetch → clean/standardize products from MongoDB.
-  - `product_embedding_pipeline`: generate OpenAI embeddings → upsert into Pinecone.
-- Steps live in `src/dashboard/steps/*` and `src/dashboard/pipelines/*`.
-
-Run the embedding pipeline after setting env vars to populate the Pinecone index used by the chatbot’s item‑matching tool.
-
-## Project Structure
-
-```
+```text
 src/dashboard/
-  callbacks/           # Agent/Task progress to UI
-  config/              # Agents, tasks, schema configs
-  memory/              # ConversationBufferWindow
-  pipelines/           # ZenML pipelines
-  schemas/             # Local schema JSONs
-  steps/               # ZenML steps (Mongo, embeddings, Pinecone)
-  tools/               # Mongo analyzer, item finder, Python executor
-  ui/                  # Streamlit chat + sidebar + CSS
-  utils/               # Crew assembly, summarizers, chat state helpers
-  chatbot.py           # Alt crew setup (legacy)
-  conversational_chatbot.py  # Flow + router entrypoint
+├── callbacks/           # UI feedback mechanisms (Streamlit placeholders)
+├── config/              # Configuration files (agents.yaml, tasks.yaml)
+├── memory/              # Conversation history management
+├── pipelines/           # ZenML pipelines for data processing
+├── schemas/             # JSON schemas for local validation
+├── steps/               # Individual pipeline steps
+├── tools/               # Custom tools (MongoDB connector, Python REPL, etc.)
+├── ui/                  # UI components (sidebar, chat interface, CSS)
+├── utils/               # Utility functions (logging, formatting)
+└── conversational_chatbot.py  # Main entry point and CrewAI logic
 ```
 
+## ⚡ Getting Started
 
-## Limitations & Next Steps
+### Prerequisites
 
-- Limitations:
-  - No charts/visualizations yet (tables only)
-  - Follow‑up query understanding can be improved further
-  - Some latency on first‑run model/tools initialization
-- Roadmap:
-  - Add plotly/altair‑based charts and CSV export
-  - Query caching and results persistence
-  - Role‑based access control + audit logs
-  - Observability (LangSmith) and eval harness
-  - Expand semantic normalization beyond products (e.g., restaurant names, categories)
+*   **Docker** (Recommended) OR **Python 3.12**
+*   **NVIDIA API Key**
+*   **Pinecone API Key** & Index
+*   **MongoDB Instance** (URI)
 
-## Security Notes
+### Environment Setup
 
-- Keep secrets in `.env` or your secrets manager; never commit keys.
-- Pipelines read‑only where possible; writing to Pinecone is scoped to the configured index.
+Create a `.env` file in the root directory:
+
+```env
+NVIDIA_API_KEY=your_nvidia_key
+PINECONE_API_KEY=your_pinecone_key
+mongodb_uri=your_mongodb_connection_string
+database_name=your_database_name
+```
+
+### Installation & Run
+
+#### Option A: Docker (Recommended)
+
+1.  **Build and Start**:
+    ```bash
+    docker compose up --build
+    ```
+2.  **Access App**: Open [http://localhost:8501](http://localhost:8501) in your browser.
+
+#### Option B: Local Python
+
+1.  **Install Dependencies**:
+    ```bash
+    pip install -r requirements.txt
+    pip install crewai~=0.76.9 crewai-tools~=0.13.4
+    ```
+2.  **Run Application**:
+    ```bash
+    cd src/dashboard
+    streamlit run conversational_chatbot.py
+    ```
+
+## 💡 Usage Examples
+
+DineLytics handles a wide range of business queries. Try asking:
+
+*   **Sales Performance**: *"What were the total sales for Pizza last month?"*
+*   **Trends**: *"Show me the daily revenue trend for November 2025."*
+*   **Top Performers**: *"What are the top 5 best-selling products across all stores?"*
+*   **Operational**: *"Which stores had the highest delivery fees last week?"*
+
+## ⚙️ Configuration
+
+*   **Agents**: Customize agent roles and goals in `src/dashboard/config/agents.yaml`.
+*   **Tasks**: Define specific agent workflows in `src/dashboard/config/tasks.yaml`.
+*   **Schemas**: Manage collection mappings in `src/dashboard/config/schema.yaml`.
+
+---

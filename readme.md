@@ -93,7 +93,7 @@ database_name=your_database_name
     streamlit run conversational_chatbot.py
     ```
 
-## 💡 Usage Examples
+##  Usage Examples
 
 DineLytics handles a wide range of business queries. Try asking:
 
@@ -102,7 +102,7 @@ DineLytics handles a wide range of business queries. Try asking:
 *   **Top Performers**: *"What are the top 5 best-selling products across all stores?"*
 *   **Operational**: *"Which stores had the highest delivery fees last week?"*
 
-## ⚙️ Configuration
+##  Configuration
 
 *   **Agents**: Customize agent roles and goals in `src/dashboard/config/agents.yaml`.
 *   **Tasks**: Define specific agent workflows in `src/dashboard/config/tasks.yaml`.

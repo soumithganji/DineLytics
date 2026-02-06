@@ -8,10 +8,8 @@ DineLytics is a production-grade AI analytics assistant designed to democratize 
 
 ##  Key Features
 
-*   **Direct Query Pipeline**: A lightweight 2-LLM-call pipeline that generates pymongo code and formats results — fast and deterministic.
-*   **Smart Classification**: Regex fast-path for greetings; single LLM call to classify and enhance ambiguous queries.
+*   **Direct Query Pipeline**: A lightweight LLM pipeline that generates pymongo code and formats results — fast and deterministic.
 *   **Semantic Understanding**: Uses **NVIDIA Embeddings** and **Pinecone** to resolve naming inconsistencies (e.g., matching "Mac n Cheese" to "Mac & Cheese") via semantic search.
-*   **Production-Ready Architecture**: Built with **Streamlit** for a responsive UI, containerized with **Docker**.
 *   **Conversational Memory**: Maintains context across the session to support follow-up questions.
 *   **Schema-Aware**: Dynamically adapts to your specific MongoDB schema structure.
 

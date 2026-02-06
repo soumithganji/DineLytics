@@ -2,7 +2,6 @@ import json
 import base64
 from io import BytesIO
 import os
-from crewai import Agent, Task, Crew, Process
 import time
 from memory.conversation import ConversationBufferWindow
 import streamlit as st
@@ -11,9 +10,7 @@ import streamlit as st
 # Custom JSON Encoder
 class CustomJSONEncoder(json.JSONEncoder):
     def default(self, obj):
-        if isinstance(obj, (Agent, Task, Crew, Process)):
-            return str(obj)
-        elif isinstance(obj, ConversationBufferWindow):
+        if isinstance(obj, ConversationBufferWindow):
             return {
                 "window_size": obj.window_size,
                 "buffer": list(obj.buffer)

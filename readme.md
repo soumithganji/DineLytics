@@ -8,10 +8,8 @@ DineLytics is a production-grade AI analytics assistant designed to democratize 
 
 ##  Key Features
 
-*   **Multi-Agent Orchestration**: Powered by **CrewAI**, a team of specialized agents co-operate to handle queries:
-    *   **Schema Analyzer**: Intelligently maps user questions to relevant MongoDB collections and fields, handling schema variations.
-    *   **Query Builder**: Constructs optimized, aggregation-ready MongoDB queries.
-    *   **Data Analyst**: Executes queries, validates results, and formats them into clean, human-readable tables.
+*   **Direct Query Pipeline**: A lightweight 2-LLM-call pipeline that generates pymongo code and formats results — fast and deterministic.
+*   **Smart Classification**: Regex fast-path for greetings; single LLM call to classify and enhance ambiguous queries.
 *   **Semantic Understanding**: Uses **NVIDIA Embeddings** and **Pinecone** to resolve naming inconsistencies (e.g., matching "Mac n Cheese" to "Mac & Cheese") via semantic search.
 *   **Production-Ready Architecture**: Built with **Streamlit** for a responsive UI, containerized with **Docker**, and utilizing **ZenML** for data pipelines.
 *   **Conversational Memory**: Maintains context across the session to support follow-up questions.
@@ -21,7 +19,6 @@ DineLytics is a production-grade AI analytics assistant designed to democratize 
 
 *   **Language**: Python 3.12+
 *   **Frameworks & Libraries**:
-    *   **CrewAI**: Multi-agent orchestration.
     *   **LangChain**: Tooling and LLM abstraction.
     *   **Streamlit**: Interactive web interface.
     *   **Pydantic**: Data validation and detailed schema definitions.
@@ -47,7 +44,7 @@ src/dashboard/
 ├── tools/               # Custom tools (MongoDB connector, Python REPL, etc.)
 ├── ui/                  # UI components (sidebar, chat interface, CSS)
 ├── utils/               # Utility functions (logging, formatting)
-└── conversational_chatbot.py  # Main entry point and CrewAI logic
+└── conversational_chatbot.py  # Main entry point and query routing
 ```
 
 ##  Getting Started
@@ -85,7 +82,6 @@ database_name=your_database_name
 1.  **Install Dependencies**:
     ```bash
     pip install -r requirements.txt
-    pip install crewai~=0.76.9 crewai-tools~=0.13.4
     ```
 2.  **Run Application**:
     ```bash
@@ -104,8 +100,7 @@ DineLytics handles a wide range of business queries. Try asking:
 
 ##  Configuration
 
-*   **Agents**: Customize agent roles and goals in `src/dashboard/config/agents.yaml`.
-*   **Tasks**: Define specific agent workflows in `src/dashboard/config/tasks.yaml`.
 *   **Schemas**: Manage collection mappings in `src/dashboard/config/schema.yaml`.
+*   **Query Pipeline**: Tune the direct query pipeline in `src/dashboard/pipelines/direct_query_pipeline.py`.
 
 ---

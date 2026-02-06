@@ -19,6 +19,4 @@ ratelimit~=2.2.1
 sentence-transformers~=3.3.1
 streamlit~=1.40.1
 streamlit_chat~=0.1.1
-crewai~=0.76.9
-crewai-tools~=0.13.4
 markdown>=3.0

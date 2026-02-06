@@ -1,12 +1,31 @@
 import os
 
-from crewai_tools import tool
-import torch
-from sentence_transformers import SentenceTransformer, util
-from pinecone import Pinecone
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# --- Cached resources (loaded once, reused across calls) ---
+_embedding_model = None
+_pinecone_index = None
+
+def _get_embedding_model():
+    global _embedding_model
+    if _embedding_model is None:
+        import torch
+        from sentence_transformers import SentenceTransformer
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        _embedding_model = SentenceTransformer('sentence-transformers/all-MiniLM-L12-v2').to(device)
+    return _embedding_model
+
+def _get_pinecone_index():
+    global _pinecone_index
+    if _pinecone_index is None:
+        from pinecone import Pinecone
+        pc = Pinecone(api_key=os.getenv('PINECONE_API_KEY'))
+        _pinecone_index = pc.Index("food")
+    return _pinecone_index
 
 
-@tool("Food Items Finder")
 def filter_items(food_item_name: str) -> str:
     """
     Find food names semantically equivalent to the food name in user query
@@ -19,26 +38,14 @@ def filter_items(food_item_name: str) -> str:
     """
 
     try:
+        model = _get_embedding_model()
+        index = _get_pinecone_index()
 
-        from dotenv import load_dotenv
-
-        load_dotenv()
-        pinecone_key = os.getenv('PINECONE_API_KEY')
-        pc = Pinecone(api_key=pinecone_key)
-        index_name = "food"
-        index = pc.Index(index_name)
-
-
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        model = SentenceTransformer('sentence-transformers/all-MiniLM-L12-v2').to(device)
-
-
-        item_embedding =  model.encode(food_item_name, convert_to_tensor=True).cpu().numpy().tolist()
-
+        item_embedding = model.encode(food_item_name, convert_to_tensor=True).cpu().numpy().tolist()
 
         query_response = index.query(
             vector=item_embedding,
-            top_k=20,
+            top_k=10,
             include_metadata=True
         )
 
@@ -46,11 +53,9 @@ def filter_items(food_item_name: str) -> str:
         for match in query_response['matches']:
             equivalent_items.append(match['metadata']['food_item'])
 
-
         if not equivalent_items:
             return "No semantically equivalent food items found."
 
-        # Convert list to string and remove duplicates
         return ", ".join(set(equivalent_items))
 
     except Exception as e:

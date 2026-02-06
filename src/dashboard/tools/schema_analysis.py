@@ -1,4 +1,3 @@
-from crewai_tools import tool
 import json
 from typing import Dict
 from pathlib import Path
@@ -6,7 +5,6 @@ import yaml
 from config import schema_config
 
 
-@tool("MongoDB Schema Analyzer")
 def analyze_local_schema(collection_name: str) -> str:
     """
     Analyzes schema of collection.

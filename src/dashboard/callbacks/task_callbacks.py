@@ -1,8 +1,12 @@
 import streamlit as st
 
-from crewai.tasks.task_output import TaskOutput
-from utils.utils import summarize_task
 from memory.conversation import ConversationBufferWindow
+
+
+def _truncate(text, max_len=120):
+    """Truncate text for progress display instead of making an LLM call."""
+    text = str(text).strip().replace('\n', ' ')
+    return text[:max_len] + '…' if len(text) > max_len else text
 
 
 class TaskProgressCallback:
@@ -12,10 +16,10 @@ class TaskProgressCallback:
         self.message = None
         self.placeholder = container
 
-    def __call__(self, task_output: TaskOutput):
+    def __call__(self, task_output):
         task_name = task_output.name if task_output.name else ''
-        summary = summarize_task(task_name + ': ' + task_output.summary)
-        self.message = f"{summary}"
+        summary = _truncate(task_name + ': ' + task_output.summary)
+        self.message = f"✅ {summary}"
         self.memory.add_task_output(task_output)
         self._update_display()
 

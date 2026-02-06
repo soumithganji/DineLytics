@@ -1,4 +1,3 @@
-from crewai.tasks.task_output import TaskOutput
 from collections import deque
 import json
 from typing import Any
@@ -12,7 +11,7 @@ class ConversationBufferWindow:
     def add_message(self, role: str, content: str):
         self.buffer.append((role, content))
 
-    def add_task_output(self, task_output: TaskOutput):
+    def add_task_output(self, task_output):
         self.add_message(task_output.agent, f"{task_output.raw}")
 
     def get_conversation_string(self) -> str:

@@ -39,66 +39,52 @@ document.addEventListener('DOMContentLoaded', function() {
 
 def render_chat_messages():
     if st.session_state.current_thread is not None:
-        # Render messages for the current thread
-        for msg in st.session_state.chat_history[st.session_state.current_thread]['messages']:
+        messages = st.session_state.chat_history[st.session_state.current_thread]['messages']
+        for msg in messages:
             role_class = "user-message" if msg["role"] == "user" else "assistant-message"
             # Convert markdown to HTML for proper table rendering
             content_html = markdown.markdown(msg["content"], extensions=['tables', 'nl2br'])
             st.markdown(f'<div class="chat-message-wrapper {role_class}"><div class="chat-bubble">{content_html}</div></div>', unsafe_allow_html=True)
 
 
-def handle_flow_interaction(prompt, flow, container=None):
-    if prompt:  # Using the prompt from the text_input
-        st.session_state.show_placeholder = False
-        if container:
-            container.empty()
-
-        if st.session_state.current_thread is None:
-            st.session_state.current_thread = generate_unique_thread_id()
-            st.session_state.chat_history[st.session_state.current_thread] = {}
-            # st.session_state.memory = ConversationBufferWindow(window_size=10)
-            st.session_state.chat_history[st.session_state.current_thread]['messages'] = []
-            st.session_state.chat_history[st.session_state.current_thread]['conversation'] = ConversationBufferWindow(window_size=10)
-
-            # st.session_state.messages = []  # Reset messages for the new thread
-
-        # Append user message
-        user_message = {"role": "user", "content": prompt}
-        st.session_state.chat_history[st.session_state.current_thread]['messages'].append(user_message)
-
-        # Convert markdown to HTML and render user message
-        user_html = markdown.markdown(prompt, extensions=['tables'])
-        st.markdown(f'<div class="chat-message-wrapper user-message"><div class="chat-bubble">{user_html}</div></div>', unsafe_allow_html=True)
-
-        flow.state.conversation_history = st.session_state.chat_history[st.session_state.current_thread]['conversation']
-
+def handle_flow_interaction(prompt, flow):
+    """Run the AI flow. Thread creation and user-message rendering are
+    handled by the caller so the user sees their message immediately."""
+    if prompt:
         if not isinstance(st.session_state.chat_history[st.session_state.current_thread]['conversation'], ConversationBufferWindow):
             data = st.session_state.chat_history[st.session_state.current_thread]['conversation']
             st.session_state.chat_history[st.session_state.current_thread]['conversation'] = ConversationBufferWindow.from_dict(data)
 
         flow.state.conversation_history = st.session_state.chat_history[st.session_state.current_thread]['conversation']
-
         flow.state.current_query = prompt
-        
-        with st.spinner("Processing your query..."):
-            flow.kickoff()
-                
-        # Clear progress messages after execution
-        flow.clear_progress()
 
-        # Append assistant response
-        response = flow.state.response
+        try:
+            flow.kickoff()
+            response = flow.state.response
+            if not response or not response.strip():
+                response = "I'm sorry, I wasn't able to generate a response. Please try asking again."
+        except Exception as e:
+            print(f"Error during flow execution: {e}")
+            response = (
+                "⚠️ Something went wrong while processing your query. "
+                "Please try again. If the issue persists, try starting a new thread."
+            )
+        finally:
+            # Always clear progress placeholders, even on error
+            try:
+                flow.clear_progress()
+            except Exception:
+                pass
+
+        # Append assistant response to history
         assistant_message = {"role": "assistant", "content": response}
         st.session_state.chat_history[st.session_state.current_thread]['messages'].append(assistant_message)
 
-        # Convert markdown to HTML and render assistant message
-        response_html = markdown.markdown(response, extensions=['tables', 'nl2br'])
-        st.markdown(f'<div class="chat-message-wrapper assistant-message"><div class="chat-bubble">{response_html}</div></div>', unsafe_allow_html=True)
-
-        # st.session_state.messages = st.session_state.chat_history[st.session_state.current_thread]['messages']
         st.session_state.show_placeholder = False
         save_chat_history()
-        st.session_state.text_input = ""
+
+        # Rerun so Streamlit re-renders the full page cleanly with all messages from history
+        st.rerun()
 
 
 
@@ -112,16 +98,43 @@ def create_chat_interface(flow_class, mongodb_uri, database_name, collection_nam
     # print(st.session_state.message_container)
 
     with st.session_state.message_container:
-        # Move history rendering inside the container
-        render_chat_messages()
-        
-        flow = flow_class()
-        
+        # Use a single container for all chat messages to avoid flash/duplication
+        chat_container = st.container()
+
+        with chat_container:
+            render_chat_messages()
+
         prompt = st.chat_input("What is your question?")
         if prompt:
-            # Clear the placeholder immediately
+            # Clear placeholder and show user message BEFORE the heavy import
             placeholder_spot.empty()
-            handle_flow_interaction(prompt, flow, placeholder_spot)
+            st.session_state.show_placeholder = False
+
+            # Ensure a thread exists
+            if st.session_state.current_thread is None:
+                st.session_state.current_thread = generate_unique_thread_id()
+                st.session_state.chat_history[st.session_state.current_thread] = {
+                    'messages': [],
+                    'conversation': ConversationBufferWindow(window_size=10),
+                }
+
+            # Record and render the user message right away
+            st.session_state.chat_history[st.session_state.current_thread]['messages'].append(
+                {"role": "user", "content": prompt}
+            )
+
+            with chat_container:
+                user_html = markdown.markdown(prompt, extensions=['tables'])
+                st.markdown(
+                    f'<div class="chat-message-wrapper user-message">'
+                    f'<div class="chat-bubble">{user_html}</div></div>',
+                    unsafe_allow_html=True,
+                )
+
+                # Spinner covers both the heavy import and the AI processing
+                with st.spinner("Processing your query..."):
+                    flow = flow_class()
+                    handle_flow_interaction(prompt, flow)
 
     # display messages or placeholder
     if st.session_state.show_placeholder:

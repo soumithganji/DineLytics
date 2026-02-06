@@ -1,177 +1,55 @@
-schema_analysis_task:
-  description: >
-    Analyze the data schemas of the 'DineLytics' application to identify necessary collections and fields required to address the following user query:
-
-    "{user_query}"
-
-    **Context:**
-    **Context:**
-        - 'DineLytics' is a local food delivery app in Buffalo.
-        - The associated database is named '{database_name}'.
-        - Available collections are:
-          {collection_names}
-    
-    **Objective:**
-        - Identify necessary collections and granular fields (including nested fields like `details.name`) to address the user query precisely.
-        - Provide all naming variations for queried entities (especially food items) using available tools.
-        - Prepare a schema mapping that will be used to construct consistent and comprehensive queries.
-    
-    **Instructions:**
-    1. **Identify Relevant Collections and Fields**:
-       - From the provided schemas, determine which collections and fields are necessary to answer the user query.
-       - Justify your selection based on their relevance to the query components. If required think again to determine
-         necessary fields to answer the user query.
-    
-    Note: Please note that orders.total_amount is "the total amount on entire order", but not about any specific item in order, 
-    for total amount on a single item, you can find that information from "orders.details[].total_amount"
-       
-    2. **Perform Schema Analysis**:
-       - Analyze the schemas of the relevant collections to understand their structure and data types.
-       - Identify the data type of each field and its parent field (if applicable).
-
-    3. **Map Query Components**:
-       - Break down the user query into key components (e.g., time frame, product name).
-       - Map each component to the corresponding collections and fields, emphasizing names over IDs.
-       
-    4. **Handle Naming Inconsistencies**:
-       - When processing a user query, check if it contains any food item names.
-       - Use appropriate tool to identify naming inconsistencies for given food items (only if the query is about specific food item).
-         Otherwise don't try to find naming inconsistencies.
-       - Analyze list of names semantically equivalent to given food item in user_query.
-
-    5. **Document Findings**:
-       - Provide a detailed mapping of query components to collections and fields, emphasizing the importance of using names over IDs.
-       - Include all naming variations for food items, ensuring comprehensive results.
-       - Include any assumptions or considerations made during the analysis.
-
-  expected_output: >
-    - A list of relevant collections and fields necessary to answer the user query, with justifications.
-    - For each relevant field, provide:
-      - Field name
-      - Data type
-      - Parent field (if applicable)
-    - If query is about a specific food item, provide other names to look out for while writing queries for food item in user query.
-    - Explanations and any assumptions made during the analysis.
-
 query_building_task:
   description: >
-    Generate an optimized MongoDB query or aggregation pipeline to satisfy the requirements of the user query, specifically focusing on the requested metrics and dimensions, based on the schema mapping from the `schema_analysis_task`. This should address the following user query:
+    Generate AND execute an optimized MongoDB aggregation pipeline for: "{user_query}"
 
-    "{user_query}"
+    Context: DineLytics (food delivery app, Buffalo). MongoDB URI: {mongodb_uri}, DB: {database_name}, Collections: {collection_names}, Today: {current_date}
 
-    **Context:**
-    - **Schema Mapping**: Utilize the output from the `schema_analysis_task`, including strategies for handling naming inconsistencies.
-    - **MongoDB URI**: {mongodb_uri}
-    - **Database Name**: {database_name}
-    - **Collections**: {collection_names}
-    - **Current Date**: Today is {current_date}. Use this reference for any relative time calculations (e.g., "last week", "this month", "last 30 days").
-    
-    **Objective:**
-        - Create an optimized MongoDB aggregation pipeline or query that directly addresses the user's specific question.
-        - Ensure the query uses case-insensitive regex (using $regex and $options: 'i') for all name-based filters.
-        - Handle naming inconsistencies by including all variations provided by the `schema_analysis_task`.
-        - Deliver Python code that outputs results as a JSON object.
+    DATABASE SCHEMAS:
+    {database_schemas}
 
-    **Instructions:**
-    1. **Utilize Schema Mapping**:
-       - Refer to the schema mapping to identify relevant collections and fields to get better idea for yourself.
-       - Incorporate naming variations from the schema analysis (as it is, without any changes) to handle inconsistencies in product names.
+    SCHEMA NOTES:
+    - orders.total_amount = entire order total; orders.details[].total_amount = single item total
+    - orders.details[] is an array — use $unwind to access items
+    - details[].name = item name, details[].price = unit price, details[].qty = quantity
+    - Use case-insensitive regex ($options:'i') for ALL name filters
 
-    2. **Construct the Query**:
-       - Build a MongoDB aggregation pipeline using proper MongoDB syntax and operators.
-       - Properly implement variable handling in the pipeline.
-       - Use $unwind on the details array to access individual product items in orders.
-       - For name matching, use regex with options 'i' for case-insensitive matching on details.name field.
-       - When comparing multiple items (pizza vs burger), run the aggregation to get all items first, then filter results in Python to only include matching items before outputting.
-       - Include names (e.g., product names, restaurant names) in the results instead of IDs.
+    FOOD ITEMS: If query mentions specific food (pizza, pasta), use Food Items Finder first. For general queries (top 10, total revenue), build directly — do NOT call any tool.
 
-    3. **Date Handling (CRITICAL - FOLLOW EXACTLY)**:
-       - Use Python's datetime module: from datetime import datetime
-       - "PAST MONTH" or "LAST MONTH" = PREVIOUS CALENDAR MONTH. Example: If current_date is 2025-12-21, then "past month" means November 2025 (Nov 1 to Nov 30). Use start_date = datetime(2025, 11, 1) and end_date = datetime(2025, 12, 1).
-       - "THIS MONTH" = current calendar month. If current_date is 2025-12-21, use start_date = datetime(2025, 12, 1) and end_date = datetime(2026, 1, 1).
-       - For weekly trends within a month, query ONLY that month's dates and group by week. Format weeks as date ranges like "Nov 3 - Nov 9" using the Monday of each week.
-       - Always use $gte and $lt operators for date ranges on the createdAt field.
+    DATE RULES:
+    - "till now"/"total"/"all time"/no time period = NO date filter, just end_date=datetime.now()
+    - "last month" = previous calendar month (e.g. if Dec 21 → Nov 1 to Dec 1)
+    - "this month" = current month start to next month start
+    - "today" = today only (start to start+1 day)
+    - Only add date filters when user explicitly mentions a time period
 
-    4. **Code Template (USE THIS STRUCTURE)**:
-       - Import: os, json, datetime, pymongo, dotenv
-       - Connect using: MongoClient(os.getenv('mongodb_uri')) and db = client[os.getenv('database_name')]
-       - Define start_date and end_date as datetime objects
-       - Build pipeline with $match for date range, $unwind on $details, $match for product name regex, $group for aggregation, $sort
-       - Execute with: results = list(db.orders.aggregate(pipeline))
-       - Output with: print(json.dumps(results, default=str))
-
+    STEPS:
+    1. Build the Python/pymongo code: connect via os.getenv('mongodb_uri')/os.getenv('database_name'), run pipeline, print json.dumps(results, default=str).
+    2. IMMEDIATELY execute the code using the Python Code Executor tool.
+    3. Return both the code AND the execution output.
 
   expected_output: >
-    You MUST return a JSON object containing:
-    - python_code: Executable code that connects to MongoDB and runs the optimized query, returning results as a JSON object.
-    - query_output_structure: Description of the expected output format, including fields and data types.
-
-  agent: query_builder
-  context:
-    - schema_analysis_task
+    The python_code you wrote AND the raw JSON execution output from running it.
 
 data_analysis_task:
   description: >
-    Execute the MongoDB query generated in the `query_building_task` and present the output in a clean, user-friendly format (tabular if data is found, descriptive text if not), ensuring consistency and use of names instead of IDs, for the following user query:
+    Format the pre-executed query results from query_building_task for: "{user_query}"
 
-    **User Query**: "{user_query}"
+    The query has ALREADY been executed. The raw JSON output is in the context from query_building_task.
+    Do NOT re-execute the code unless the results look wrong or empty due to a bug (then fix and re-run).
 
-    **Context:**
-    - **MongoDB URI**: "{mongodb_uri}"
-    - **Database Name**: "{database_name}"
-    - **Query Code**: Use the Python code from the `query_building_task`.
-    - **Schema Mapping**: Refer to outputs from the `schema_analysis_task`.
-
-    **Objective:**
-    - Analyze the provided code if it's correct, if not please modify it accordingly.
-    - Execute the MongoDB query and return the results in a detailed, structured format that directly answers the user's query.
-    - If data is found, present it in a clear format (tabular or descriptive as appropriate). If no data is found, provide a descriptive response.
-    - Ensure all relevant records are included, using human-readable names instead of IDs.
-
-    **Instructions:**
-    1. **Execute the Query**:
-       - Correct and format the provided Python code correctly.
-       - Pass any necessary arguments to the Code Execution Tool.
-       - Run the Python code to execute the query and capture the JSON output.
-
-    2. **Understand JSON Results**:
-       - Transform JSON output into a structured format
-       - Verify the data for completeness and correctness.
-
-    3. **Format the Results**:
-       - If data is found: Present the output in a format that best suits the query. If the data contains multiple fields or multiple records, YOU MUST use a Markdown table.
-       - IMPORTANT: The Markdown table MUST be preceded by a blank line and each row MUST be on a new line.
-       - Example Table Format:
-         
-         | Header 1 | Header 2 |
-         | -------- | -------- |
-         | Value 1  | Value 2  |
-         
-        - YOU MUST convert numeric month values (1-12) into their full names (January-December) to ensure the table is intuitive.
-        - For weekly data, show date ranges like "Nov 4 - Nov 10", "Nov 11 - Nov 17" instead of week numbers. Calculate the Monday-Sunday dates for each week.
-        - YOU MUST format every financial value (prices, revenue, total sales, etc.) using the "$" sign (e.g., $100.00).
-        - If the query asks for a single metric (like total count), a concise statement is appropriate.
-       - If no data is found: DO NOT use a table. Instead, provide a helpful and descriptive sentence explaining the situation.
-       - Maintain consistency in naming conventions as per the schema mapping.
-
-    4. **Output Presentation**:
-       - If the result contains data, display the Markdown table clearly, ensuring columns are properly aligned and sorted if needed.
-       - If the result contains no data (empty list or no matches), provide a descriptive and polite response explaining that no information was found for the specific query. Mention any relevant details like the time range or item name searched for.
-       - Avoid returning raw JSON, unformatted text lists, or empty lists `[]` to the user.
-   
-    
+    FORMAT RULES:
+    - Multiple rows → Markdown table (blank line before table, each row on new line)
+    - Single metric → concise sentence (e.g. "Total revenue is $12,345.00")
+    - No data → polite explanation
+    - Month numbers→names, weekly data→date ranges ("Nov 4-10"), financial values with "$", names instead of IDs
+    - Never return raw JSON or empty lists
+    - Only include items matching user's request
 
   expected_output: >
-    - ONLY the direct answer to the user's query. Do NOT explain how the query was built or executed.
-    - IMPORTANT: Only include items that match what the user asked for. If user asks about "pizza and burgers", do NOT include fries, sandwiches, or other unrelated items.
-    - If the query asks for a "highest", "lowest", "best", "top 1", or similar single-answer question: Provide a concise sentence (e.g., "November 2025 had the highest pasta sales at $1,463.00.").
-    - If the query returns multiple rows (e.g., "top 10", "all months", "compare X and Y"): Use a Markdown table with clear column headers.
-    - If the query returns a single aggregate metric (e.g., average, total, count): A single concise sentence (e.g., "The average order value last week was $68.59.").
-    - If the query returns no data: A brief, polite response explaining that no matching records were found.
-    - Do NOT include any explanation about MongoDB queries, regex, schema mapping, or technical implementation details.
-    - Do NOT use a table for single-record answers.
+    ONLY the direct answer. No technical explanations.
+    Single-answer → concise sentence. Multiple rows → Markdown table. No data → brief explanation.
+    Format financial values with "$".
 
   agent: data_analyst
   context:
     - query_building_task
-    - schema_analysis_task

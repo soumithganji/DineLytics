@@ -1,39 +1,21 @@
 import os
+import threading
 
 import streamlit as st
-from crewai import Crew
-from crewai.flow.flow import Flow, start, listen, router, or_
-from pydantic import BaseModel, Field
-
 from dotenv import load_dotenv
 
-from utils.crew_utils import *
-from callbacks.agent_callbacks import AgentProgressCallback
-from callbacks.task_callbacks import TaskProgressCallback
-from memory.conversation import ConversationBufferWindow
 load_dotenv()
 _nvidia_key = os.getenv("NVIDIA_API_KEY", "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")
 os.environ["NVIDIA_API_KEY"] = _nvidia_key
 os.environ["NVIDIA_NIM_API_KEY"] = _nvidia_key
 os.environ["NVIDIA_NIM_API_BASE"] = "https://integrate.api.nvidia.com/v1"
 
-import streamlit as st
-from langchain_nvidia_ai_endpoints import ChatNVIDIA
-
+from memory.conversation import ConversationBufferWindow
 from ui.css import apply_css
-from tools.mongodb_tools import analyze_mongodb_schema
-from tools.python_executor import execute_python_code
-from tools.items_finder import filter_items
-from tools.schema_analysis import analyze_local_schema
-from dotenv import load_dotenv
-
-from config import agents_config, tasks_config
-
+from config import all_schemas_string
 from utils.chat_utils import *
-
 from ui.sidebar import render_sidebar
 from ui.chat_interface import create_chat_interface, render_chat_messages
-from utils.utils import extract_last_meaningful_query
 
 # Environment variables
 mongodb_uri = os.getenv("mongodb_uri")
@@ -45,107 +27,115 @@ collection_names = [
 ]
 
 
+# ---------------------------------------------------------------------------
+# Background preloading of heavy dependencies (langchain, torch, etc.)
+# Starts immediately when the module loads so imports happen while the UI renders.
+# ---------------------------------------------------------------------------
+_preload_done = threading.Event()
 
-class ChatState(BaseModel):
-    model_config = {"arbitrary_types_allowed": True}
-    conversation_history: ConversationBufferWindow = Field(default_factory=ConversationBufferWindow)
-    current_query: str = ""
-    response: str = ""
-    is_task_specific: bool = False
+def _preload_heavy_deps():
+    """Import heavy packages in background so the first query is fast."""
+    try:
+        from utils.utils import _get_nvidia_llm
+        _get_nvidia_llm()                  # pre-warm the LLM client
+        # Pre-warm embedding model + Pinecone so first food query is fast
+        from tools.items_finder import _get_embedding_model, _get_pinecone_index
+        _get_embedding_model()
+        _get_pinecone_index()
+        # Pre-warm the PythonREPL
+        from tools.python_executor import _get_repl
+        _get_repl()
+        # Pre-import the direct query pipeline
+        from pipelines.direct_query_pipeline import run_data_query  # noqa: F401
+    except Exception as e:
+        print(f"[preload] warning: {e}")
+    finally:
+        _preload_done.set()
 
 
+class ChatbotFlow:
+    """Plain-Python query router."""
 
-class ChatbotFlow(Flow[ChatState]):
     def __init__(self):
-        super().__init__()
-        self.progress_placeholders = []
-        self.task_crew = None
-        self.conversation_crew = None
-        self.chat_llm = ChatNVIDIA(model='meta/llama-3.3-70b-instruct')
-        self._crews_initialized = False
+        self.conversation_history: ConversationBufferWindow = ConversationBufferWindow()
+        self.current_query: str = ""
+        self.response: str = ""
 
-    def _init_crews(self):
-        """Initialize crews with progress placeholders. Called during kickoff when spinner is active."""
-        if not self._crews_initialized:
-            p = st.empty()
-            self.progress_placeholders.append(p)
-            agents = create_agents(AgentProgressCallback, p)
-            tasks = create_tasks(agents, p, self.state.conversation_history)
-            self.task_crew = Crew(agents=agents, tasks=tasks, verbose=True, memory=False)
-            
-            p2 = st.empty()
-            self.progress_placeholders.append(p2)
-            conversational_agent = create_conversational_agent(AgentProgressCallback, p2)
-            conversational_task = create_conversational_task(conversational_agent, self.state.conversation_history)
-            self.conversation_crew = Crew(agents=[conversational_agent], tasks=[conversational_task], verbose=True, memory=False)
-            self._crews_initialized = True
+    # -- alias so chat_interface.py can access flow.state.* unchanged ------
+    @property
+    def state(self):
+        return self
 
     def clear_progress(self):
-        for p in self.progress_placeholders:
-            p.empty()
+        pass
 
-    @start()
-    def process_input(self):
-        # Initialize crews here so placeholders are created after spinner starts
-        self._init_crews()
-        print(f"Processing input: {self.state.current_query}")
+    def kickoff(self):
+        """Run the full classify → route → respond pipeline."""
+        from utils.utils import extract_and_classify_query, _get_nvidia_llm
 
+        print(f"Processing input: {self.current_query}")
 
-        last_query = extract_last_meaningful_query(self.state.conversation_history.get_conversation_string(), self.state.current_query)
+        # 1. Classify + enhance
+        enhanced_query, is_task = extract_and_classify_query(
+            self.conversation_history.get_conversation_string(),
+            self.current_query,
+        )
+        if enhanced_query:
+            self.current_query = enhanced_query
+            print(f"Enhanced query: {enhanced_query}")
 
-        print(last_query)
+        self.conversation_history.add_message("User", self.current_query)
 
-        if last_query:
-            self.state.current_query = last_query
-
-        self.state.conversation_history.add_message("User", self.state.current_query)
-
-        # print('current query will be', self.state.current_query)
-
-        self.state.is_task_specific = determine_if_task_specific_llm(self.state.current_query)
-
-        # print(self.state.is_task_specific)
-
-    @router(process_input)
-    def route_query(self):
-        if self.state.is_task_specific:
-            return "task_specific"
+        # 2. Route
+        if is_task:
+            self._handle_task_query()
         else:
-            return "general_conversation"
+            self._handle_general_query(_get_nvidia_llm())
 
-    @listen("task_specific")
-    def handle_task_query(self):
-        from datetime import datetime
-        result = self.task_crew.kickoff(inputs={
-            "user_query": self.state.current_query.replace("{", "{{").replace("}", "}}"),
-            "conversation_history": self.state.conversation_history.get_conversation_string().replace("{", "{{").replace("}", "}}"),
-            'mongodb_uri': mongodb_uri,
-            'database_name': database_name,
-            'collection_names': collection_names,
-            'current_date': datetime.now().strftime("%Y-%m-%d"),
-        })
-        self.state.response = result.raw
+        # 3. Store response in memory
+        self.conversation_history.add_message("AI", self.response)
+        print(f"AI response: {self.response}")
 
-    @listen("general_conversation")
-    def handle_general_query(self):
-        result = self.conversation_crew.kickoff(inputs={
-            "user_query": self.state.current_query.replace("{", "{{").replace("}", "}}"),
-            "conversation_history": self.state.conversation_history.get_conversation_string().replace("{", "{{").replace("}", "}}")
-        })
-        self.state.response = result.raw
+    # -- handlers ----------------------------------------------------------
 
-    @listen(or_(handle_task_query, handle_general_query))
-    def update_conversation(self):
-        self.state.conversation_history.add_message("AI", self.state.response)
-        print(f"AI response: {self.state.response}")
+    def _handle_task_query(self):
+        """Direct 2-LLM-call pipeline."""
+        from pipelines.direct_query_pipeline import run_data_query
 
+        self.response = run_data_query(
+            user_query=self.current_query,
+            schemas=all_schemas_string,
+            mongodb_uri=mongodb_uri,
+            database_name=database_name,
+            collection_names=collection_names,
+            conversation_history=self.conversation_history.get_conversation_string(),
+        )
+
+    def _handle_general_query(self, llm):
+        """Direct LLM call for simple chat."""
+        messages = [
+            {"role": "system", "content": "You are DineLytics, a friendly AI assistant for a food delivery analytics app. Be concise and helpful."},
+            {"role": "user", "content": f"Conversation so far:\n{self.conversation_history.get_conversation_string()}\n\nUser: {self.current_query}"},
+        ]
+        resp = llm.invoke(messages)
+        self.response = resp.content.strip()
+
+
+# Kick off the background preload
+threading.Thread(target=_preload_heavy_deps, daemon=True).start()
+
+
+def _create_flow():
+    """Factory that waits for background preload then creates a flow instance."""
+    _preload_done.wait()          # no-op if preload already finished
+    return ChatbotFlow()
 
 
 def handle_interaction(flow, prompt, memory):
-    flow.state.conversation_history = memory
-    flow.state.current_query = prompt
+    flow.conversation_history = memory
+    flow.current_query = prompt
     flow.kickoff()
-    return flow.state.response
+    return flow.response
 
 
 
@@ -171,27 +161,7 @@ def main():
 
     apply_css()
 
-    # if prompt := st.chat_input("What would you like to know?"):
-    #     st.session_state.messages.append({"role": "user", "content": prompt})
-    #     with st.chat_message("user"):
-    #         st.markdown(prompt)
-    #
-    #     flow = ChatbotFlow()
-    #     response = handle_interaction(flow, prompt, st.session_state.memory)
-    #
-    #     with st.chat_message("assistant"):
-    #         st.markdown(response)
-    #
-    #     st.session_state.messages.append({
-    #         "role": "assistant",
-    #         "content": response
-    #     })
-    #
-    #     # Update the conversation memory
-    #     st.session_state.memory.add_message("User", prompt)
-    #     st.session_state.memory.add_message("Assistant", response)
-
-    create_chat_interface(ChatbotFlow, mongodb_uri, database_name, collection_names)
+    create_chat_interface(_create_flow, mongodb_uri, database_name, collection_names)
 
 if __name__ == "__main__":
     main()

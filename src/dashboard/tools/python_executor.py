@@ -1,27 +1,31 @@
-from crewai_tools import tool
-from langchain_experimental.utilities import PythonREPL
 import json
-from typing import Optional,Dict
+from typing import Optional, Dict
+
+# Cached REPL instance — avoids re-creating a subprocess on every call
+_repl = None
+
+def _get_repl():
+    global _repl
+    if _repl is None:
+        from langchain_experimental.utilities import PythonREPL
+        _repl = PythonREPL()
+    return _repl
 
 
-@tool("Python Code Executor")
 def execute_python_code(
         code: str,
-        # context: Optional[dict] = None
 ) -> Dict[str, str]:
     """
     Executes Python code in a controlled REPL environment and returns the output.
 
     Args:
         code (str): Python code to execute
-        context (dict, optional): Additional variables to inject into execution context
 
     Returns:
         str: Output from code execution or error message
     """
     try:
-        # Initialize Python REPL
-        repl = PythonREPL()
+        repl = _get_repl()
 
         # If context is provided, prepare it as variable declarations
         # context_setup = ""

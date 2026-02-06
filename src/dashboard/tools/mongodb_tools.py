@@ -1,10 +1,8 @@
-from crewai_tools import tool
 from pymongo.mongo_client import MongoClient
 from collections import defaultdict
 import json
 from typing import Dict, Union
 
-@tool("MongoDB Schema Analyzer")
 def analyze_mongodb_schema(collection_name: str, database_name: str, mongodb_uri: str, sample_size: int = 50) -> str:
     """
     Analyzes the schema of a MongoDB collection and returns the field types and structure.

@@ -1,9 +1,21 @@
 import os
 from pymongo import MongoClient
-from crewai_tools import tool
 from dotenv import load_dotenv
 
-@tool("Database Search Tool")
+load_dotenv()
+
+# --- Cached MongoDB client (reused across calls) ---
+_mongo_client = None
+
+def _get_db():
+    global _mongo_client
+    uri = os.getenv("mongodb_uri", "mongodb://localhost:27017")
+    db_name = os.getenv("database_name", "appetit_db")
+    if _mongo_client is None:
+        _mongo_client = MongoClient(uri)
+    return _mongo_client[db_name]
+
+
 def search_db_entities(search_term: str) -> str:
     """
     Search for items or categories in the local MongoDB database.
@@ -15,13 +27,8 @@ def search_db_entities(search_term: str) -> str:
     Returns:
         str: A summary of matching products and categories found in the database.
     """
-    load_dotenv()
-    uri = os.getenv("mongodb_uri", "mongodb://localhost:27017")
-    db_name = os.getenv("database_name", "appetit_db")
-    
     try:
-        client = MongoClient(uri)
-        db = client[db_name]
+        db = _get_db()
         
         results = []
         

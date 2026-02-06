@@ -1,18 +1,24 @@
 import os
-from langchain_nvidia_ai_endpoints import ChatNVIDIA
 from dotenv import load_dotenv
 
 load_dotenv()
 os.environ["NVIDIA_API_KEY"] = os.getenv("NVIDIA_API_KEY", "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")
 
-nvidia_llm = ChatNVIDIA(model='meta/llama-3.3-70b-instruct', temperature=0.2)
+_nvidia_llm = None
+
+def _get_nvidia_llm():
+    global _nvidia_llm
+    if _nvidia_llm is None:
+        from langchain_nvidia_ai_endpoints import ChatNVIDIA
+        _nvidia_llm = ChatNVIDIA(model='meta/llama-3.3-70b-instruct', temperature=0.2)
+    return _nvidia_llm
 
 def summarize_text(text):
     messages = [
         {"role": "system", "content": "You are a helpful assistant that summarizes text into a single concise statement."},
         {"role": "user", "content": f"Summarize the following text into a single statement with precision with max of 15 words in present continuous tense with out any subject: {text}"}
     ]
-    response = nvidia_llm.invoke(messages)
+    response = _get_nvidia_llm().invoke(messages)
     return response.content.strip()
 
 
@@ -21,55 +27,61 @@ def summarize_task(task):
         {"role": "system", "content": "You are a helpful assistant that summarizes text into a single concise statement."},
         {"role": "user", "content": f"Summarize the following text into a single statement with precision with max of 15 words in past tense: {task}"}
     ]
-    response = nvidia_llm.invoke(messages)
+    response = _get_nvidia_llm().invoke(messages)
     return response.content.strip()
 
 
-def extract_last_meaningful_query(conversation_history, user_query):
-    # Prepare the conversation history for the NVIDIA model
+import re
 
-    prompt = f"""
-    Given a conversation about data analysis, transform user query by:
-    
-    1. Context Understanding:
-        - Previous analysis context: {conversation_history}
-        - Current question: {user_query}
-        - Related metrics mentioned earlier
-        
-    If current query has no relevance to the previous conversation, then don't make any assumptions based on previous current history
-    
-    2. Query Enhancement:
-        - If query is conversational, simply return No meaningful query found
-        - Extract specific KPIs and metrics needed
-        - Identify time periods and frequencies
-        - Determine required data dimensions
-        - Add business context
-    
-    3. Generate Analysis Request:
-    "Based on our discussion about Previous analysis context, please analyze:
-    - Primary metrics: [specific metrics]
-    - Time period: [specified timeframe] (If no time specified, consider it as "till now"
-    - Analysis goal: [business objective]
-    - Additional context: [relevant background]"
+# Fast regex patterns for obvious general conversation (no LLM needed)
+_GENERAL_PATTERNS = re.compile(
+    r'^\s*('
+    r'h(i|ello|ey|owdy|ola)'
+    r'|thanks?( you)?|thx|ty'
+    r'|bye|goodbye|see ya|later'
+    r'|good (morning|afternoon|evening|night)'
+    r'|what(s|\s*is)? up'
+    r'|how are you'
+    r'|ok(ay)?|sure|great|cool|nice|awesome'
+    r'|yes|no|nope|yep|yeah'
+    r'|who are you|what are you|what can you do'
+    r'|help'
+    r')\s*[?!.]*\s*$',
+    re.IGNORECASE
+)
+
+
+def extract_and_classify_query(conversation_history, user_query):
     """
+    Classify + enhance user query. Uses fast regex for obvious greetings,
+    falls back to a single LLM call for ambiguous queries.
+    Returns (enhanced_query_or_None, is_task_specific).
+    """
+    # Fast path: obvious greetings / chitchat — skip LLM entirely
+    if _GENERAL_PATTERNS.match(user_query):
+        return None, False
 
-    print(prompt)
+    prompt = f"""You are a classifier for DineLytics (food delivery analytics).
+
+Conversation: {conversation_history}
+Query: "{user_query}"
+
+1. CLASSIFY as "task" (data/analytics: orders, sales, revenue, products, stores, metrics, trends) or "general" (greetings, chitchat).
+2. If task: refine query using conversation context (resolve pronouns, add missing context). Keep time-unspecified queries as-is ("till now" = all data). If general: enhanced_query=null.
+
+Return ONLY JSON: {{"classification":"task"|"general","enhanced_query":"..."|null}}"""
 
     try:
         messages = [
-            {"role": "system", "content": "You are a helpful assistant that extracts the meaningful 'User' query from a conversation."},
+            {"role": "system", "content": "Return only valid JSON."},
             {"role": "user", "content": prompt}
         ]
-        response = nvidia_llm.invoke(messages)
-
-        extracted_query = response.content.strip()
-
-        # If no meaningful query was found, the model might return something like "No meaningful query found"
-        if "no meaningful query" in extracted_query.lower():
-            return None
-
-        return extracted_query
-
+        response = _get_nvidia_llm().invoke(messages)
+        import json as _json
+        result = _json.loads(response.content.strip())
+        is_task = result.get("classification", "general").lower() == "task"
+        enhanced = result.get("enhanced_query")
+        return enhanced, is_task
     except Exception as e:
-        print(f"Error in extracting query: {str(e)}")
-        return None
+        print(f"Error in extract_and_classify_query: {str(e)}")
+        return user_query, True

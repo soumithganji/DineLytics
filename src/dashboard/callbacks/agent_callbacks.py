@@ -1,7 +1,10 @@
 import streamlit as st
 
 
-from utils.utils import summarize_text
+def _truncate(text, max_len=120):
+    """Truncate text for progress display instead of making an LLM call."""
+    text = str(text).strip().replace('\n', ' ')
+    return text[:max_len] + '…' if len(text) > max_len else text
 
 
 class AgentProgressCallback:
@@ -15,9 +18,9 @@ class AgentProgressCallback:
         message = ''
         if hasattr(step_output, 'tool'):
             if hasattr(step_output, 'thought') and len(step_output.thought) > 0:
-                message += f'\n{summarize_text(step_output.thought)}'
+                message += f'\n🔍 {_truncate(step_output.thought)}'
         else:
-            message = f'🤔 Thought: {str(step_output)}'
+            message = f'🤔 Thought: {_truncate(step_output)}'
         self.messages.append(message)
         self._update_display()
 

@@ -2,7 +2,7 @@
 
 DineLytics is a production-grade AI analytics assistant designed to democratize access to business data. It allows users to ask complex questions about restaurant operations, sales, and inventory in plain English and receive precise, tabular insights, bypassing the need for database knowledge or complex BI tools.
 
-🔗 **Try the Live Demo Here: [DineLytics](https://dinelytics-650060583648.us-central1.run.app)**
+🔗 **Try the Live Demo Here: [DineLytics](https://dinelytics-86803365913.us-central1.run.app)**
 
 ![DineLytics Preview](assets/dinelytics_preview.png)
 

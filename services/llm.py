@@ -13,24 +13,6 @@ def _get_nvidia_llm():
         _nvidia_llm = ChatNVIDIA(model='meta/llama-3.3-70b-instruct', temperature=0.2)
     return _nvidia_llm
 
-def summarize_text(text):
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant that summarizes text into a single concise statement."},
-        {"role": "user", "content": f"Summarize the following text into a single statement with precision with max of 15 words in present continuous tense with out any subject: {text}"}
-    ]
-    response = _get_nvidia_llm().invoke(messages)
-    return response.content.strip()
-
-
-def summarize_task(task):
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant that summarizes text into a single concise statement."},
-        {"role": "user", "content": f"Summarize the following text into a single statement with precision with max of 15 words in past tense: {task}"}
-    ]
-    response = _get_nvidia_llm().invoke(messages)
-    return response.content.strip()
-
-
 import re
 
 # Fast regex patterns for obvious general conversation (no LLM needed)

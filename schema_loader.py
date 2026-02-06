@@ -1,25 +1,10 @@
 import yaml
 import json
-from pathlib import Path
 
 
-def load_configs():
-    """Load agent and task configurations from YAML files"""
-    config_path = 'config'
+def _load_schema_config():
 
-    # Load agents config
-    with open('config/agents.yaml', 'r') as f:
-        agents_config = yaml.safe_load(f)
-
-    # Load tasks config
-    with open('config/tasks.yaml', 'r') as f:
-        tasks_config = yaml.safe_load(f)
-
-    return agents_config, tasks_config
-
-def load_schema_config():
-
-    with open('config/schema.yaml', 'r') as f:
+    with open('schemas/schema.yaml', 'r') as f:
         schema_config = yaml.safe_load(f)
 
     return schema_config
@@ -48,7 +33,7 @@ def _compact_fields(fields, prefix=""):
 def load_all_schemas_string():
     """Pre-load ALL database schemas as an ultra-compact one-liner-per-field string.
     Reduces token count by ~70% vs indented JSON."""
-    schema_cfg = load_schema_config()
+    schema_cfg = _load_schema_config()
     parts = []
     for collection_name, path in schema_cfg.get('schema_paths', {}).items():
         try:
@@ -62,6 +47,4 @@ def load_all_schemas_string():
     return "\n".join(parts)
 
 
-agents_config, tasks_config = load_configs()
-schema_config = load_schema_config()
 all_schemas_string = load_all_schemas_string()

@@ -10,12 +10,12 @@ os.environ["NVIDIA_API_KEY"] = _nvidia_key
 os.environ["NVIDIA_NIM_API_KEY"] = _nvidia_key
 os.environ["NVIDIA_NIM_API_BASE"] = "https://integrate.api.nvidia.com/v1"
 
-from memory.conversation import ConversationBufferWindow
-from ui.css import apply_css
-from config import all_schemas_string
-from utils.chat_utils import *
+from conversation import ConversationBufferWindow
+from ui.styles import apply_css
+from schema_loader import all_schemas_string
+from ui.chat_utils import *
 from ui.sidebar import render_sidebar
-from ui.chat_interface import create_chat_interface, render_chat_messages
+from ui.chat_interface import create_chat_interface
 
 # Environment variables
 mongodb_uri = os.getenv("mongodb_uri")
@@ -36,17 +36,17 @@ _preload_done = threading.Event()
 def _preload_heavy_deps():
     """Import heavy packages in background so the first query is fast."""
     try:
-        from utils.utils import _get_nvidia_llm
+        from services.llm import _get_nvidia_llm
         _get_nvidia_llm()                  # pre-warm the LLM client
         # Pre-warm embedding model + Pinecone so first food query is fast
-        from tools.items_finder import _get_embedding_model, _get_pinecone_index
+        from services.food_search import _get_embedding_model, _get_pinecone_index
         _get_embedding_model()
         _get_pinecone_index()
         # Pre-warm the PythonREPL
-        from tools.python_executor import _get_repl
+        from services.code_executor import _get_repl
         _get_repl()
         # Pre-import the direct query pipeline
-        from pipelines.direct_query_pipeline import run_data_query  # noqa: F401
+        from query_pipeline import run_data_query  # noqa: F401
     except Exception as e:
         print(f"[preload] warning: {e}")
     finally:
@@ -71,7 +71,7 @@ class ChatbotFlow:
 
     def kickoff(self):
         """Run the full classify → route → respond pipeline."""
-        from utils.utils import extract_and_classify_query, _get_nvidia_llm
+        from services.llm import extract_and_classify_query, _get_nvidia_llm
 
         print(f"Processing input: {self.current_query}")
 
@@ -100,7 +100,7 @@ class ChatbotFlow:
 
     def _handle_task_query(self):
         """Direct 2-LLM-call pipeline."""
-        from pipelines.direct_query_pipeline import run_data_query
+        from query_pipeline import run_data_query
 
         self.response = run_data_query(
             user_query=self.current_query,
@@ -129,14 +129,6 @@ def _create_flow():
     """Factory that waits for background preload then creates a flow instance."""
     _preload_done.wait()          # no-op if preload already finished
     return ChatbotFlow()
-
-
-def handle_interaction(flow, prompt, memory):
-    flow.conversation_history = memory
-    flow.current_query = prompt
-    flow.kickoff()
-    return flow.response
-
 
 
 def main():

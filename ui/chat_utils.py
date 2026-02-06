@@ -1,9 +1,7 @@
 import json
-import base64
-from io import BytesIO
 import os
 import time
-from memory.conversation import ConversationBufferWindow
+from conversation import ConversationBufferWindow
 import streamlit as st
 
 
@@ -17,12 +15,6 @@ class CustomJSONEncoder(json.JSONEncoder):
             }
 
         return super().default(obj)
-
-# Streamlit UI functions
-def convert_image_to_base64(image):
-    buffered = BytesIO()
-    image.save(buffered, format="PNG")
-    return base64.b64encode(buffered.getvalue()).decode()
 
 
 def load_chat_history():

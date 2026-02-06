@@ -4,14 +4,14 @@ DineLytics is a production-grade AI analytics assistant designed to democratize 
 
 🔗 **Try the Live Demo Here: [DineLytics](https://dinelytics-650060583648.us-central1.run.app)**
 
-![DineLytics Preview](src/dashboard/assets/dinelytics_preview.png)
+![DineLytics Preview](assets/dinelytics_preview.png)
 
 ##  Key Features
 
 *   **Direct Query Pipeline**: A lightweight 2-LLM-call pipeline that generates pymongo code and formats results — fast and deterministic.
 *   **Smart Classification**: Regex fast-path for greetings; single LLM call to classify and enhance ambiguous queries.
 *   **Semantic Understanding**: Uses **NVIDIA Embeddings** and **Pinecone** to resolve naming inconsistencies (e.g., matching "Mac n Cheese" to "Mac & Cheese") via semantic search.
-*   **Production-Ready Architecture**: Built with **Streamlit** for a responsive UI, containerized with **Docker**, and utilizing **ZenML** for data pipelines.
+*   **Production-Ready Architecture**: Built with **Streamlit** for a responsive UI, containerized with **Docker**.
 *   **Conversational Memory**: Maintains context across the session to support follow-up questions.
 *   **Schema-Aware**: Dynamically adapts to your specific MongoDB schema structure.
 
@@ -29,22 +29,30 @@ DineLytics is a production-grade AI analytics assistant designed to democratize 
     *   **Database**: MongoDB.
 *   **Infrastructure**:
     *   **Docker & Docker Compose**: Containerization and orchestration.
-    *   **ZenML**: MLOps pipelines for embedding generation.
 
 ##  Project Structure
 
 ```text
-src/dashboard/
-├── callbacks/           # UI feedback mechanisms (Streamlit placeholders)
-├── config/              # Configuration files (agents.yaml, tasks.yaml)
-├── memory/              # Conversation history management
-├── pipelines/           # ZenML pipelines for data processing
-├── schemas/             # JSON schemas for local validation
-├── steps/               # Individual pipeline steps
-├── tools/               # Custom tools (MongoDB connector, Python REPL, etc.)
-├── ui/                  # UI components (sidebar, chat interface, CSS)
-├── utils/               # Utility functions (logging, formatting)
-└── conversational_chatbot.py  # Main entry point and query routing
+DineLytics/
+├── app.py                   # Main entry point and query routing
+├── conversation.py          # Conversation memory management
+├── query_pipeline.py        # Direct 2-LLM-call data query pipeline
+├── schema_loader.py         # Schema config loading and formatting
+├── seed_db.py               # Standalone DB seeding script
+├── requirements.txt
+├── Dockerfile
+├── docker-compose.yml
+├── schemas/                 # JSON schemas + schema.yaml mapping
+├── services/                # Backend services
+│   ├── llm.py               # NVIDIA LLM client + query classifier
+│   ├── food_search.py       # Pinecone semantic food item lookup
+│   └── code_executor.py     # Python REPL for generated code
+├── ui/                      # Streamlit UI layer
+│   ├── chat_interface.py
+│   ├── sidebar.py
+│   ├── chat_utils.py        # Thread/history management
+│   └── styles.py            # Global CSS theme
+└── assets/                  # Static images
 ```
 
 ##  Getting Started
@@ -85,8 +93,7 @@ database_name=your_database_name
     ```
 2.  **Run Application**:
     ```bash
-    cd src/dashboard
-    streamlit run conversational_chatbot.py
+    streamlit run app.py
     ```
 
 ##  Usage Examples
@@ -100,7 +107,7 @@ DineLytics handles a wide range of business queries. Try asking:
 
 ##  Configuration
 
-*   **Schemas**: Manage collection mappings in `src/dashboard/config/schema.yaml`.
-*   **Query Pipeline**: Tune the direct query pipeline in `src/dashboard/pipelines/direct_query_pipeline.py`.
+*   **Schemas**: Manage collection mappings in `schemas/schema.yaml`.
+*   **Query Pipeline**: Tune the direct query pipeline in `query_pipeline.py`.
 
 ---

@@ -44,7 +44,7 @@ def _lookup_food_names_pinecone(food_items: list[str]) -> list[str]:
     if not food_items:
         return []
     try:
-        from tools.items_finder import _get_embedding_model, _get_pinecone_index
+        from services.food_search import _get_embedding_model, _get_pinecone_index
         model = _get_embedding_model()
         index = _get_pinecone_index()
 
@@ -124,7 +124,7 @@ def _extract_code_block(text: str) -> str:
 
 def _execute_code(code: str) -> str:
     """Run code in the cached PythonREPL."""
-    from tools.python_executor import _get_repl
+    from services.code_executor import _get_repl
     try:
         repl = _get_repl()
         result = repl.run(code)
@@ -144,7 +144,7 @@ def run_data_query(user_query: str, schemas: str, mongodb_uri: str,
     End-to-end data query in exactly 2 LLM calls.
     Returns the formatted answer string.
     """
-    from utils.utils import _get_nvidia_llm
+    from services.llm import _get_nvidia_llm
     llm = _get_nvidia_llm()
     current_date = datetime.now().strftime("%Y-%m-%d")
 

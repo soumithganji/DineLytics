@@ -1,6 +1,6 @@
 import streamlit as st
 
-from utils.chat_utils import delete_thread, truncate_message, switch_thread, create_new_thread
+from ui.chat_utils import truncate_message, switch_thread, create_new_thread
 
 
 # Cache the CSS to prevent re-rendering on every interaction

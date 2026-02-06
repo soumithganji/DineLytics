@@ -2,40 +2,9 @@ import os
 import streamlit as st
 import markdown
 
-from memory.conversation import ConversationBufferWindow
-from utils.chat_utils import generate_unique_thread_id, save_chat_history
+from conversation import ConversationBufferWindow
+from ui.chat_utils import generate_unique_thread_id, save_chat_history
 
-# Create the custom JavaScript component
-js_code = """
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const inputField = document.querySelector('[data-testid="stTextInput"] input');
-    const sendButton = document.querySelector('.send-button');
-
-    // Handle button click
-    sendButton.addEventListener('click', function() {
-        if (inputField.value.trim() !== '') {
-            submitMessage();
-        }
-    });
-
-    // Handle Enter key press
-    inputField.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter' && inputField.value.trim() !== '') {
-            submitMessage();
-        }
-    });
-
-    function submitMessage() {
-        const submitEvent = new Event('submit', {
-            'bubbles': true,
-            'cancelable': true
-        });
-        inputField.form.dispatchEvent(submitEvent);
-    }
-});
-</script>
-"""
 
 def render_chat_messages():
     if st.session_state.current_thread is not None:

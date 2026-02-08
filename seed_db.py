@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 from dotenv import load_dotenv
+import certifi
 
 # Load environment variables
 load_dotenv()
@@ -14,7 +15,7 @@ DATABASE_NAME = os.getenv("database_name", "appetit_db")
 
 def seed_database():
     print(f"Connecting to MongoDB at {MONGODB_URI}...")
-    client = MongoClient(MONGODB_URI)
+    client = MongoClient(MONGODB_URI, tlsCAFile=certifi.where())
     db = client[DATABASE_NAME]
 
     now = datetime.now()

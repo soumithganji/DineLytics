@@ -67,7 +67,8 @@ def _lookup_food_names_db(food_items: list[str]) -> list[str]:
         return []
     try:
         from pymongo import MongoClient
-        client = MongoClient(os.getenv('mongodb_uri'))
+        import certifi
+        client = MongoClient(os.getenv('mongodb_uri'), tlsCAFile=certifi.where())
         db = client[os.getenv('database_name')]
 
         all_names = set()
@@ -164,7 +165,7 @@ DATABASE SCHEMAS:
 {schemas}
 
 RULES:
-- Connect: MongoClient(os.getenv('mongodb_uri')), db = client[os.getenv('database_name')]
+- Connect: import certifi; client = MongoClient(os.getenv('mongodb_uri'), tlsCAFile=certifi.where()); db = client[os.getenv('database_name')]
 - orders.details[] is an array — use $unwind. details[].name=item, details[].price=unit price, details[].qty=quantity, details[].total_amount=item total
 - orders.total_amount = entire order total
 - Case-insensitive regex ($options:'i') for ALL name filters
